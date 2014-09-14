@@ -22,6 +22,39 @@ def get_transaction_log():
             ]
     return txs
 
+def check_for_duplicate_input_output(tx,tx2):
+  for base_input in tx["vin"]:
+    for input in tx2["vin"]:
+      if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
+        return True
+  return False
+
+def input_exist(tx,base_input):
+  for input in tx["vin"]:
+    if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
+      return True
+  return False
+
+def merge_two_txs(tx,tx2):
+  for input in tx2["vin"]:
+    if not input_exist(tx,input):
+      tx["vin"].append(input)
+  for output in tx2["vout"]:
+    tx["vout"].append(output)
+  return tx
+
+def merge_tx(txs):
+    merge_txs = []
+    while len(txs)>0:
+      base_tx = txs[0]
+      txs.remove(base_tx)
+      for tx in txs:
+        if check_for_duplicate_input_output(base_tx,tx):
+          base_tx = merge_two_txs(base_tx,tx)
+          txs.remove(tx)
+      merge_txs.append(base_tx)
+    return merge_txs
+
 def compute_amount_in(bitcoind, txinfo):
     result = Decimal("0.0")
     for vin in txinfo['vin']:
@@ -51,6 +84,7 @@ def add_tx_change(bitcoind,txs):
         change_address = get_change_address(bitcoind,tx)
         tx["change"] = {"toaddress":change_address,"amount": total_input-total_output}
     return txs
+
 def get_privatekeys(txs):
   privatekeys = []
   for tx in txs:
@@ -126,7 +160,8 @@ def remove_needed_change(tx_size,agregated_txs):
 def main():
     bitcoind = ServiceProxy("http://lior:lior1@127.0.0.1:8332")
     txs = get_transaction_log()
-    txs_with_change = add_tx_change(bitcoind,txs)
+    merged_txs = merge_tx(txs)
+    txs_with_change = add_tx_change(bitcoind,merged_txs)
     # print bitcoind.decoderawtransaction(create_tx(bitcoind,txs_with_change))
     agregated_txs , tx_size = aggregate_txs_for_max_tx(bitcoind,txs_with_change)
     txs_after_fee = remove_needed_change(tx_size,agregated_txs)
