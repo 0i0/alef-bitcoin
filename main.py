@@ -22,7 +22,7 @@ def get_transaction_log():
             ]
     return txs
 
-def check_for_duplicate_input_output(tx,tx2):
+def check_for_duplicate_input(tx,tx2):
   for base_input in tx["vin"]:
     for input in tx2["vin"]:
       if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
@@ -49,7 +49,7 @@ def merge_tx(txs):
       base_tx = txs[0]
       txs.remove(base_tx)
       for tx in txs:
-        if check_for_duplicate_input_output(base_tx,tx):
+        if check_for_duplicate_input(base_tx,tx):
           base_tx = merge_two_txs(base_tx,tx)
           txs.remove(tx)
       merge_txs.append(base_tx)
