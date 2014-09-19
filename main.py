@@ -1,20 +1,23 @@
 
 from decimal import *
 from jsonrpc import ServiceProxy, json
+import time
+
+MAX_TX_SIZE = 1000
 
 def get_transaction_log():
     txs =   [
                 {"vin":
-                    [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'4472d3edaeeba7d9feee129c073c6dfd0c8464d79eb215cc79a368abb61bc294'}, 
-                    {'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'5aceeb2acec5e0d964a100975da5a3e641811fda8c23d7247f98f939dc50c7d8'}],
+                    [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'4472d3edaeeba7d9feee129c073c6dfd0c8464d79eb215cc79a368abb61bc294'}
+                    ],
                 "vout":
                     [{"toaddress":"mj6ViSZBzbQdRn37MdGTqTLYbn62sV4ztR","amount":Decimal("0.003")}
                     ,{"toaddress":"mj6ViSZBzbQdRn37MdGTqTLYbn62sV4ztR","amount":Decimal("0.004")}
                     ]
                 },
                 {"vin":
-                    [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'4472d3edaeeba7d9feee129c073c6dfd0c8464d79eb215cc79a368abb61bc294'}, 
-                    {'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'5aceeb2acec5e0d964a100975da5a3e641811fda8c23d7247f98f939dc50c7d8'}],
+                    [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'5aceeb2acec5e0d964a100975da5a3e641811fda8c23d7247f98f939dc50c7d8'}
+                    ],
                 "vout":
                     [{"toaddress":"mhJtJ711pAfUFsg7Qd9RkXZFcxPLNesgrz","amount":Decimal("0.002")}
                     ]
@@ -23,37 +26,37 @@ def get_transaction_log():
     return txs
 
 def check_for_duplicate_input(tx,tx2):
-  for base_input in tx["vin"]:
-    for input in tx2["vin"]:
-      if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
-        return True
-  return False
+    for base_input in tx["vin"]:
+        for input in tx2["vin"]:
+            if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
+                return True
+    return False
 
 def input_exist(tx,base_input):
-  for input in tx["vin"]:
-    if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
-      return True
-  return False
+    for input in tx["vin"]:
+        if base_input["vout"]==input["vout"] and base_input["txid"]==input["txid"]:
+            return True
+    return False
 
 def merge_two_txs(tx,tx2):
-  for input in tx2["vin"]:
-    if not input_exist(tx,input):
-      tx["vin"].append(input)
-  for output in tx2["vout"]:
-    tx["vout"].append(output)
-  return tx
+    for input in tx2["vin"]:
+        if not input_exist(tx,input):
+            tx["vin"].append(input)
+    for output in tx2["vout"]:
+        tx["vout"].append(output)
+    return tx
 
 def merge_tx(txs):
-    merge_txs = []
+    merged_txs = []
     while len(txs)>0:
-      base_tx = txs[0]
-      txs.remove(base_tx)
-      for tx in txs:
-        if check_for_duplicate_input(base_tx,tx):
-          base_tx = merge_two_txs(base_tx,tx)
-          txs.remove(tx)
-      merge_txs.append(base_tx)
-    return merge_txs
+        base_tx = txs[0]
+        txs.remove(base_tx)
+        for tx in txs:
+            if check_for_duplicate_input(base_tx,tx):
+                base_tx = merge_two_txs(base_tx,tx)
+                txs.remove(tx)
+        merged_txs.append(base_tx)
+    return merged_txs
 
 def compute_amount_in(bitcoind, txinfo):
     result = Decimal("0.0")
@@ -124,7 +127,7 @@ def create_tx(bitcoind,agregated_txs):
 def aggregate_txs_for_max_tx(bitcoind,txs):
     tx_size = 0
     agregated_txs = []
-    max_size = 410
+    max_size = MAX_TX_SIZE
     n=0
     while tx_size < max_size and n<len(txs):
         last_tx_size = tx_size
@@ -133,13 +136,22 @@ def aggregate_txs_for_max_tx(bitcoind,txs):
         tx_size = len(txdata)/2
         n+=1
     if tx_size > max_size:
-        return (agregated_txs.pop(len(agregated_txs)-1),last_tx_size)
+        agregated_txs.pop(len(agregated_txs)-1)
+        for i in xrange(0,n-1):
+            del txs[0]
+        txs_left_to_process = txs
+        tx_size = last_tx_size
     else:
-        return (agregated_txs,tx_size)
+        for i in xrange(0,n):
+            del txs[0]
+        txs_left_to_process = txs
+    print "txs_left_to_process: %i"%(len(txs_left_to_process))
+    print "tx_size: %i"%(tx_size)
+    return (agregated_txs,tx_size,txs_left_to_process)
 
 def calculate_total_fees(tx_size):
     kb = tx_size/1000
-    return (kb+1)*Decimal("0.0001")
+    return (kb)*Decimal("0.0001") # the current fee per kilobyte of the network
 
 def remove_needed_change(tx_size,agregated_txs):
     total_fees = calculate_total_fees(tx_size)
@@ -159,17 +171,22 @@ def remove_needed_change(tx_size,agregated_txs):
 
 def main():
     bitcoind = ServiceProxy("http://lior:lior1@127.0.0.1:8332")
-    txs = get_transaction_log()
-    merged_txs = merge_tx(txs)
-    txs_with_change = add_tx_change(bitcoind,merged_txs)
-    # print bitcoind.decoderawtransaction(create_tx(bitcoind,txs_with_change))
-    agregated_txs , tx_size = aggregate_txs_for_max_tx(bitcoind,txs_with_change)
-    txs_after_fee = remove_needed_change(tx_size,agregated_txs)
-    txdata = create_tx(bitcoind,txs_after_fee)
-    privatekeys = get_privatekeys(txs_after_fee)
-    signed_rawtx = bitcoind.signrawtransaction(txdata, [], privatekeys)
-    print signed_rawtx["complete"]
-    print bitcoind.decoderawtransaction(signed_rawtx["hex"])
+    while True:
+        txs = get_transaction_log()
+        merged_txs = merge_tx(txs)
+        txs_with_change = add_tx_change(bitcoind,merged_txs)
+        txs_left_to_process = txs_with_change
+        while len(txs_left_to_process)>0:
+            print len(txs_left_to_process)
+            agregated_txs , tx_size, txs_left_to_process = aggregate_txs_for_max_tx(bitcoind,txs_left_to_process)
+            txs_after_fee = remove_needed_change(tx_size,agregated_txs)
+            txdata = create_tx(bitcoind,txs_after_fee)
+            privatekeys = get_privatekeys(txs_after_fee)
+            signed_rawtx = bitcoind.signrawtransaction(txdata, [], privatekeys)
+            print signed_rawtx["complete"]
+            print bitcoind.decoderawtransaction(signed_rawtx["hex"])
+            # bitcoind.sendrawtransaction(signed_rawtx)
+        time.sleep(60*60*168)
 
 if __name__ == '__main__':
     main()
