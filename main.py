@@ -3,7 +3,7 @@ from decimal import *
 from jsonrpc import ServiceProxy, json
 import time
 
-MAX_TX_SIZE = 1000
+MAX_TX_SIZE = 10000
 
 def get_transaction_log():
     txs =   [
