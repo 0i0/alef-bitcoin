@@ -11,15 +11,15 @@ def get_transaction_log():
                     [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'4472d3edaeeba7d9feee129c073c6dfd0c8464d79eb215cc79a368abb61bc294'}
                     ],
                 "vout":
-                    [{"toaddress":"mj6ViSZBzbQdRn37MdGTqTLYbn62sV4ztR","amount":Decimal("0.003")}
-                    ,{"toaddress":"mj6ViSZBzbQdRn37MdGTqTLYbn62sV4ztR","amount":Decimal("0.004")}
+                    [{"toaddress":"mgW9ZiGaCKkNthxxaDU7ALnmWvrFsdFXBz","amount":Decimal("0.003")}
+                    ,{"toaddress":"n4Qvzpc5zTJBxKBzkQ4DV7joh6ByTjVrW8","amount":Decimal("0.004")}
                     ]
                 },
                 {"vin":
                     [{'privatekey': u'cTcpfmbWC6amaKCxAPN15177YLpSmnKNX3SCzmGkSnfb8bwznWMC', 'vout': 1, 'txid': u'5aceeb2acec5e0d964a100975da5a3e641811fda8c23d7247f98f939dc50c7d8'}
                     ],
                 "vout":
-                    [{"toaddress":"mhJtJ711pAfUFsg7Qd9RkXZFcxPLNesgrz","amount":Decimal("0.002")}
+                    [{"toaddress":"muikdTNVhWZcoGFUwdsVVt5nA63BvntNGZ","amount":Decimal("0.002")}
                     ]
                 },
             ]
@@ -185,7 +185,7 @@ def main():
             signed_rawtx = bitcoind.signrawtransaction(txdata, [], privatekeys)
             print signed_rawtx["complete"]
             print bitcoind.decoderawtransaction(signed_rawtx["hex"])
-            # bitcoind.sendrawtransaction(signed_rawtx)
+            bitcoind.sendrawtransaction(signed_rawtx["hex"])
         time.sleep(60*60*168)
 
 if __name__ == '__main__':
